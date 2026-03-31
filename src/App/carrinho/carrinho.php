@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8" />
@@ -289,7 +289,6 @@
             </div>
         </div>
     </div>
-    
 
 <script>
 // compatibilidade: 'userCart' (mesmo key usado na sua index)
@@ -395,7 +394,9 @@ function mostrarCampos(id){ hideAllPayment(); document.getElementById(id).style.
 
 function buildPixPayload(amount){
     const merchant = 'BORATOMA';
+
     const amountCents = Math.round(amount*100).toString();
+
     return `00020126580014BR.GOV.BCB.PIX01${merchant}5204000053039865405${amountCents}5802BR5920BORATOMA43274000000000`;
 }
 
@@ -450,16 +451,54 @@ finishBtn.addEventListener('click', ()=>{
 
 document.getElementById('modalCancel').addEventListener('click', ()=>{ confirmModal.classList.remove('active'); });
 
-document.getElementById('modalOk').addEventListener('click', ()=>{
-
+document.getElementById('modalOk').addEventListener('click', async () => {
+    // 1. Fecha o modal visualmente
     confirmModal.classList.remove('active');
-    const method = document.querySelector('input[name="payment"]:checked').value;
-    alert('Pedido via '+method.toUpperCase()+ ' realizado! Obrigado pela compra 😊');
-    cart = {};
-    saveCart();
-    renderCart();
-    updateBadge();
-    
+
+    // 2. Prepara os dados conforme o seu PHP espera ($dados['carrinho'], etc)
+    const dadosPedido = {
+        carrinho: Object.values(cart), // Envia a lista de produtos
+        endereco: document.getElementById('delivery-address').value,
+        observacoes: document.getElementById('delivery-notes').value,
+        gorjeta: document.getElementById('motoboy-tip').value || "0",
+        pagamento: document.querySelector('input[name="payment"]:checked').value,
+        total: document.getElementById('total').innerText // O PHP vai limpar o "R$" lá
+    };
+
+    // 3. Validação básica antes de enviar
+    if (!dadosPedido.endereco) {
+        alert("Por favor, preencha o endereço de entrega!");
+        return;
+    }
+
+    try {
+        // 4. Faz a chamada para o seu arquivo PHP
+        // IMPORTANTE: Mude 'seu_arquivo.php' para o nome real do seu arquivo
+        const resposta = await fetch('finalizarCarrinho.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dadosPedido)
+        });
+
+        const resultado = await resposta.json();
+
+        if (resultado.sucesso) {
+            alert('✅ ' + resultado.mensagem);
+            
+            // Limpa tudo após o sucesso
+            cart = {};
+            saveCart();
+            renderCart();
+            updateBadge();
+            document.getElementById('delivery-address').value = '';
+            document.getElementById('delivery-notes').value = '';
+        } else {
+            alert('❌ Erro: ' + resultado.erro);
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Houve um erro ao conectar com o servidor.');
+    }
 });
 
 document.getElementById('opt-pix').addEventListener('click', ()=>{ mostrarCampos('pix-fields'); });

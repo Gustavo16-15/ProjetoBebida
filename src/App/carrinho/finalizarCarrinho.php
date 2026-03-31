@@ -1,36 +1,82 @@
-<?php 
-$host = 'localhost';
-$db = 'app_db';
-$user ='root';
-$pass = "";
+<?php
+$host = "db";
+$dbname = "app_db";
+$user = "root";
+$pass = "root";
+
+header('Content-Type: application/json');
 
 try {
-$pdo = new PDO ("mysql:host=$host;dbname=$db;", $user, $pass);
+    $pdo = new PDO(
+        "mysql:host=$host;dbname=$dbname;charset=utf8",
+        $user,
+        $pass
+    );
 
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-// $id_produto = 1;
-$nome= $_POST ['nome'];
-$valor = $_POST ['valor'];
-$soma = $_POST ['soma'];
+    $json = file_get_contents('php://input');
+    $dados = json_decode($json, true);
 
-$sql= "INSERT INTO CARRINHO (nome,valor,soma)
-    VALUES(:nome,:valor,:soma)";
-    $stmt = $pdo-> prepare($sql);
+    if (!$dados) {
+        throw new Exception("Dados inválidos recebidos.");
+    }
 
+    $itens = json_encode($dados['carrinho'], JSON_UNESCAPED_UNICODE);
 
-    $stmt-> execute([
-    ':nome'=> $nome,
-    ':valor'=> $valor,
-    ':soma'=> $soma
+    $endereco = filter_var(
+        $dados['endereco'] ?? '',
+        FILTER_SANITIZE_SPECIAL_CHARS
+    );
+
+    $obs = filter_var(
+        $dados['observacoes'] ?? '',
+        FILTER_SANITIZE_SPECIAL_CHARS
+    );
+
+    $pagamento = filter_var(
+        $dados['pagamento'] ?? '',
+        FILTER_SANITIZE_SPECIAL_CHARS
+    );
+
+    $gorjeta = 0;
+    if (!empty($dados['gorjeta'])) {
+        $gorjeta = (float) trim(
+            str_replace(['R$', '.', ','], ['', '', '.'], $dados['gorjeta'])
+        );
+    }
+
+    $total = (float) trim(
+        str_replace(['R$', '.', ','], ['', '', '.'], $dados['total'])
+    );
+
+    $sql = "INSERT INTO pedidos
+            (itens, endereco, observacoes, gorjeta, pagamento, total)
+            VALUES
+            (:itens, :endereco, :obs, :gorjeta, :pagamento, :total)";
+
+    $stmt = $pdo->prepare($sql);
+
+    $stmt->execute([
+        ':itens' => $itens,
+        ':endereco' => $endereco,
+        ':obs' => $obs,
+        ':gorjeta' => $gorjeta,
+        ':pagamento' => $pagamento,
+        ':total' => $total
     ]);
 
-     echo "<script>
-        alert('Produto comprado com sucesso!');
-        window.location.href = 'index.php';
-      </script>";
+    echo json_encode([
+        'sucesso' => true,
+        'mensagem' => 'Pedido salvo com sucesso!'
+    ]);
 
-}catch (PDOException $e){
- echo "Erro ao conectar".
- $e->getMessage();
+} catch (Exception $e) {
+    http_response_code(500);
+
+    echo json_encode([
+        'sucesso' => false,
+        'erro' => $e->getMessage()
+    ]);
 }
 ?>
