@@ -484,6 +484,46 @@ document.getElementById('modalOk').addEventListener('click', async () => {
 
         if (resultado.sucesso) {
             alert('✅ ' + resultado.mensagem);
+
+            //inicio do bloco novo
+            console.log ("Iniciando monitoramento do pagamento");
+            const verificarStatus = setInterval(async () =>{
+                try{
+                    const response =await fetch (`verificar.php?id=${resultado.id_pedido}`);
+                    
+                    if(!response.ok) throw new Error ("Erro na rede ao verificar");
+
+                    const data = await response.json();
+
+                    if (data.pago){
+                        clearInterval(verificarStatus);
+                        alert('🚀 Pagamento Confirmado! Seu pedido já está sendo preparado.');
+                    }
+                }catch (err) {
+                    console.error("Erro ao verificar status",err)
+                }
+            },5000);
+
+            setTimeout(async ()=> {
+                try{
+                const confirmacao = await fetch('confirmar_simulacao.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_pedido: resultado.id_pedido })
+            });
+
+                if (!confirmacao.ok) throw new Error("Erro ao simular pagamento");
+
+                    console.log("Simulação de pagamento enviada ao servidor...");
+                } catch (error) {
+                    console.error("Erro na simulação:", error);
+                }
+            }, 7000); // Acontece uma única vez após 7 segundos
+
+                     
+            
+ 
+            // final do bloco novo
             
             // Limpa tudo após o sucesso
             cart = {};
@@ -499,8 +539,8 @@ document.getElementById('modalOk').addEventListener('click', async () => {
         console.error('Erro:', error);
         alert('Houve um erro ao conectar com o servidor.');
     }
-});
 
+});
 document.getElementById('opt-pix').addEventListener('click', ()=>{ mostrarCampos('pix-fields'); });
 document.getElementById('opt-cred').addEventListener('click', ()=>{ mostrarCampos('cred-fields'); });
 document.getElementById('opt-deb').addEventListener('click', ()=>{ mostrarCampos('deb-fields'); });

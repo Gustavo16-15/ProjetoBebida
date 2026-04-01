@@ -68,7 +68,8 @@ try {
 
     echo json_encode([
         'sucesso' => true,
-        'mensagem' => 'Pedido salvo com sucesso!'
+        'mensagem' => 'Pedido salvo com sucesso!',
+        'id_pedido'=> $pdo -> lastInsertId() // linha nova
     ]);
 
 } catch (Exception $e) {
